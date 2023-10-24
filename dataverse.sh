@@ -2,20 +2,11 @@
 
 # [ -z ${DIR_PROJECT} ] && echo -e 'Informe o diretório do projeto. Ex:\n  export DIR_PROJECT="${HOME}/dev/evor"' && exit 1
 
-export DIR_PROJECT="${HOME}/douglas500/sti/desenvolvimento/repositorios/dv/dataverse"
+export DIR_PROJECT="${HOME}/douglas500/sti/desenvolvimento/repositorios/dv/dataverse/dataverse"
 
 YML="${DIR_PROJECT}/docker-compose-dev.yml"
 OPTSTRING=":udbxh"
 BUILD=false
-
-echo "Criando o diretorio de volumes"
-#mkdir -p docker-dev-volumes/app/data
-#mkdir -p docker-dev-volumes/app/secrets
-#mkdir -p docker-dev-volumes/postgresql/data
-#mkdir -p docker-dev-volumes/solr/data
-#mkdir -p docker-dev-volumes/solr/conf 
-#mkdir -p conf/keycloak
-#touch conf/keycloak/test-realm.json
 
 # Docker exemplo
 # https://github.com/docker/awesome-compose/tree/master/official-documentation-samples/django/
@@ -62,6 +53,7 @@ fi
 
 source ${DIR_PROJECT}/.env
 
+# remove a imagem
 # docker image rm ${APP_IMAGE} -f
 
 #Se a imagem da aplicação não existir então faça ao build
@@ -69,8 +61,6 @@ if [[ "$(docker images -q ${APP_IMAGE} 2> /dev/null)" == "" ]]; then
   echo "Definindo para aplicação executar o build"
   BUILD=true
 fi
-
-exit 0
 
 case ${ACTION} in
   "up")
