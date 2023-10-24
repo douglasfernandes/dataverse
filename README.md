@@ -9,10 +9,14 @@ dataverse para aula da ESR
 ./dataverse.sh -d
 
 # Execução no Windows:
-(Em andamento o passo a passo)
+(Em andamento do passo a passo)
+
 ##Instalar VirtualBox
+
 ##Criar uma VM a partir do ubuntu
+
 ##Na VM, executar o script de preparação do docker
+
 ##Executar o script de execução do dataverse(Linux)
 
 
