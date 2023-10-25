@@ -1,6 +1,6 @@
 # Dataverse
 
-Instalação do Dataverse para aula da ESR em uma máquina linux, usando git, docker e docker-compose
+Uma alternativa de instalação do Dataverse para aula da ESR em uma máquina linux, usando git, docker e docker-compose
 
 # Execução no Windows:
 
@@ -28,3 +28,17 @@ cd dataverse
 ./dataverse.sh -u
 ```
 Obs : a opção '-u' inicia o container, '-d' fecha o container
+
+## O serviço:
+Após uns 5 a 10 minutos, abra a página: 
+
+página: localhost:8080
+
+login: dataverseAdmin
+
+senha: admin1
+
+Referência:
+- https://github.com/IQSS/dataverse
+- https://k8s-docs.gdcc.io/en/v4.20/quickstart/docker-compose.html
+- https://ct.gdcc.io/
