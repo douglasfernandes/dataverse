@@ -1,22 +1,30 @@
-# dataverse
-dataverse para aula da ESR
+# Dataverse
 
-# Execução no Linux:
-## para iniciar
-./dataverse.sh -u 
-
-## para baixar os containeres
-./dataverse.sh -d
+Instalação do Dataverse para aula da ESR em uma máquina linux, usando git, docker e docker-compose
 
 # Execução no Windows:
-(Em andamento do passo a passo)
+
+## Download a imagem do ubuntu
+- [Download Ubuntu](https://mirror.uepg.br/ubuntu-releases/22.04.3/ubuntu-22.04.3-live-server-amd64.iso)
 
 ## Instalar VirtualBox
+- [Download VirtualBox](https://download.virtualbox.org/virtualbox/7.0.12/VirtualBox-7.0.12-159484-Win.exe)
+- [Manual do virtualBox](https://www.virtualbox.org/manual/ch01.html#intro-running)
+- [Como instalar o virtualBox](https://www.youtube.com/watch?v=CIuJ6IzgXW0)
 
-## Criar uma VM a partir do ubuntu
+## Crie uma VM usando a imagem do Ubuntu
 
-## Na VM, executar o script de preparação do docker
-
-## Executar o script de execução do dataverse(Linux)
+## Abra a nova VM e execute o script de instalação do dataverse
 
 
+# Execução no Linux:
+
+Estando na VM ou na própria máquina linux faça:
+Ex:
+- ./dataverse.sh -[u|d]
+```
+git clone git@github.com:douglasfernandes/dataverse.git
+cd dataverse
+./dataverse.sh -u
+```
+Obs : a opção '-u' inicia o container, '-d' fecha o container
