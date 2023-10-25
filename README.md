@@ -26,6 +26,10 @@ Ex:
 git clone git@github.com:douglasfernandes/dataverse.git
 cd dataverse
 ./dataverse.sh -u
+aguarde uns 3 minutos
+./dataverse.sh -d
+./dataverse.sh -u
+
 ```
 Obs : a opção '-u' inicia o container, '-d' fecha o container
 
