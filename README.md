@@ -16,9 +16,60 @@ Uma alternativa de instalação do Dataverse para aula da ESR em uma máquina li
 
 ## Abra a nova VM e execute o script de instalação do dataverse
 
+# VM via Multipass:
+## Download do multipass
+- [Download multipass](https://multipass.run/install)
 
-# Execução no Linux:
+# Criação da VM 
+Este é um script bash, deve-se verifcar com fazer no windows.
+```
+# sudo snap install multipass
+export IP=$(hostname -I | cut -f1 -d" ")
+export VM="dataverse"
 
+# Exclui uma VM (opcional)
+function delVm() {
+  vm="$1"
+  multipass stop $vm 
+  multipass delete $vm
+  multipass purge
+}
+
+# Cria a VM. -d: disco , -m: memória, -c qtd de cores
+multipass launch --name $VM -d 50G -m 4G -c 4
+
+# Exemplo de como piar um arquivo para a vm
+multipass transfer arquivo.txt ${VM}:instalacao/arquivo.txt
+
+# Exemplo de execução de um comando
+multipass exec ${VM} -- mkdir instalacao
+
+# Exemplo de como compartilhar uma pasta local com a VM:
+mkdir ${HOME}/dataverse/dados
+multipass mount ${HOME}/dataverse/dados dataverse:/dados
+
+# Exemplo de como acessar o shell da VM
+multipass shell ${VM} 
+```
+
+# Instalação dataverse
+
+Acesse a VM via shell
+
+## Opção 1 : Execução na VM via instalação completa
+Copie o install.sh do projeto e execute
+```
+multipass transfer install.sh ${VM}:install.sh
+multipass shell ${VM} 
+./install.sh
+```
+
+## Opção 2 : Execução na VM via docker-compose:
+
+Copie o arquivo dataverse.sh
+```
+multipass transfer dataverse.sh ${VM}:dataverse.sh
+```
 Estando na VM ou na própria máquina linux faça:
 Ex:
 - ./dataverse.sh -[u|d]
@@ -30,7 +81,7 @@ cd dataverse
 Obs : a opção '-u' inicia o container, '-d' fecha o container
 
 ## O serviço:
-Após uns 5 a 10 minutos, abra a página: 
+Aguarde a inicialização do serviço e abra a página: 
 
 página: localhost:8080
 
