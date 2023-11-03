@@ -50,11 +50,25 @@ multipass mount ${HOME}/dataverse/dados dataverse:/dados
 
 # Exemplo de como acessar o shell da VM
 multipass shell ${VM} 
+
+# como excluir uma VM
+multipass stop ${VM}
+multipass delete ${VM}
+multipass purge
+
 ```
 
 # Instalação dataverse
 
-Acesse a VM via shell
+```
+VM="dataverse"
+$ multipass launch --name $VM -d 50G -m 4G -c 4
+$ multipass transfer install.sh ${VM}:install.sh
+
+# Acesse a VM via shell
+$ multipass shell ${VM}
+# ou
+$ multipass exec ${VM} -- sudo ./install.sh
 
 ## Opção 1 : Execução na VM via instalação completa
 Copie o install.sh do projeto e execute
