@@ -10,6 +10,8 @@ add-apt-repository -y "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_re
 apt-get update
 apt-get -y install unzip openjdk-11-jdk wget   
 
+# postgres
+
 echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 apt-get update
@@ -85,7 +87,7 @@ chown dataverse /usr/local/payara5/glassfish/lib
 chown -R dataverse:dataverse /usr/local/payara5/glassfish/domains/domain1
 sed -i 's;<jvm-options>-client</jvm-options>;<jvm-options>-server</jvm-options>;g' /usr/local/payara5/glassfish/domains/domain1/config/domain.xml
 sudo -u dataverse /usr/local/payara5/glassfish/bin/asadmin start-domain
-/usr/local/payara5/bin/asadmin osgi lb | grep 'Weld OSGi Bundle'
+sudo -u dataverse /usr/local/payara5/bin/asadmin osgi lb | grep 'Weld OSGi Bundle'
 r=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080)
 [ "$r"=="200" ] && echo "[INFO] Instalação do payara OK !" || echo "[ERRO] Corriga a instalação do payara !"
 
