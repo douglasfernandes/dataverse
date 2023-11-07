@@ -41,6 +41,9 @@ multipass launch --name $VM -d 50G -m 4G -c 4
 # Exemplo de como piar um arquivo para a vm
 multipass transfer arquivo.txt ${VM}:instalacao/arquivo.txt
 
+# compartilhando uma pasta na VM
+multipass mount $HOME/dataverse ${VM}:/dataverse
+
 # Exemplo de execução de um comando
 multipass exec ${VM} -- mkdir instalacao
 
