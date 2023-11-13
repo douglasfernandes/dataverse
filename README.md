@@ -67,6 +67,7 @@ multipass purge
 VM="dataverse"
 $ multipass launch --name $VM -d 50G -m 4G -c 4
 $ multipass transfer install.sh ${VM}:install.sh
+$ multipass transfer .env ${VM}:.env
 
 # Acesse a VM via shell
 $ multipass shell ${VM}
@@ -76,8 +77,34 @@ $ multipass exec ${VM} -- sudo ./install.sh
 ## Opção 1 : Execução na VM via instalação completa
 Copie o install.sh do projeto e execute
 ```
+
+#Para não executar o download durante a instalação
+#wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
+#wget https://github.com/IQSS/dataverse/archive/dataverse-5.12.1.tar.gz
+#wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
+#wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
+
+cd download
+wget http://150.165.250.2/~douglas/dataverse/dvinstall.zip
+wget http://150.165.250.2/~douglas/dataverse/dataverse-5.12.1.tar.gz
+wget http://150.165.250.2/~douglas/dataverse/payara-6.2023.10.zip
+wget http://150.165.250.2/~douglas/dataverse/solr-8.11.1.tgz
+
+F='dvinstall.zip'; multipass transfer $F ${VM}:$F
+F='payara-6.2023.10.zip'; multipass transfer $F ${VM}:$F
+F='payara-6.2023.10.zip'; multipass transfer $F ${VM}:$F
+F='payara-6.2023.10.zip'; multipass transfer $F ${VM}:$F
+cd -
+
 multipass transfer install.sh ${VM}:install.sh
+multipass transfer .env ${VM}:.env
+multipass exec ${VM} -- sudo ./install.sh | tee log.txt
+
+```
+ou
+```
 multipass shell ${VM} 
+sudo su -
 ./install.sh
 ```
 
@@ -100,7 +127,8 @@ Obs : a opção '-u' inicia o container, '-d' fecha o container
 ## O serviço:
 Aguarde a inicialização do serviço e abra a página: 
 
-página: localhost:8080
+IP=$(multipass info $VM | grep IPv4  | cut -c 17-30)
+página: curl http://${IP}:8080
 
 login: dataverseAdmin
 

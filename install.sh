@@ -1,24 +1,29 @@
-#!/bin/bash 
+#!/bin/bash
+
 # Instalação 
 # multipass ls
 # multipass launch --name dataverse -d 50G -m 4G -c 4
 # multipass transfer install.sh ${VM}:install.sh
 # multipass shell dataverse ou
-# mutipass exec ${VM} -- sudo ./install.sh
+# multipass exec ${VM} -- sudo ./install.sh
 # multipass transfer .env ${VM}:.env
 
+#wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
+#wget https://github.com/IQSS/dataverse/archive/dataverse-5.12.1.tar.gz
+#wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
+#wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
+
 # DOI obtido em aula
-if [ ! -f .env ] && touch .env && echo -e 'DOI_USERNAME="user_doi"
+[ ! -f .env ] && touch .env && echo 'DOI_USERNAME="user_doi"
 DOI_PASSWORD="password_doi"
 POSTGRES_ADMIN_PASSWORD="postgres"
 DATAVERSE_DB="dataverse"
 DATAVERSE_DB_USER="dataverse"
-DATAVERSE_DB_PASSOWRD="dataverse"
+DATAVERSE_DB_PASSWORD="dataverse"
 ADMIN_EMAIL="email@webmail.br"
 ' > .env  && echo 'Altere o arquivo .env antes de iniciar a instalação!' && exit 1
 source .env
 
-add-apt-repository -y "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
 apt-get update
 apt-get -y install unzip openjdk-11-jdk wget   
 
@@ -47,10 +52,9 @@ r=$(/usr/bin/psql -At -h 127.0.0.1 -p 5432 -U postgres -d postgres -c 'SELECT 1'
 [ "$r"=="1" ] && echo "[INFO] Instalação do postgres OK !" || echo "[ERRO] Corriga a instalação do postgres !" 
 
 # criando o usuário e db do dataverse . devem constar no .env
-sudo -u postgres psql -c "create database $DATAVERSE_DB;
-create user $DATAVERSE_DB_USER with encrypted password '$DATAVERSE_DB_USER';
-grant all privileges on database $DATAVERSE_DB to $DATAVERSE_DB_USER;"
-
+sudo -u postgres psql -c "create database $DATAVERSE_DB;"
+sudo -u postgres psql -c "create user $DATAVERSE_DB_USER with encrypted password '$DATAVERSE_DB_PASSOWRD';"
+sudo -u postgres psql -c "grant all privileges on database $DATAVERSE_DB to $DATAVERSE_DB_USER;"
 
 # solr
 
@@ -58,7 +62,7 @@ useradd -m solr
 mkdir /usr/local/solr
 chown solr:solr /usr/local/solr
 cd /usr/local/solr
-wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
+[ ! -f solr-8.11.1.tgz ] && wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
 tar xvzf solr-8.11.1.tgz
 cp -r solr-8.11.1/server/solr/configsets/_default solr-8.11.1/server/solr/collection1
 chown -R solr:solr solr-8.11.1
@@ -73,7 +77,6 @@ sed -i '$aroot soft nproc  65000' /etc/security/limits.conf
 sed -i '$aroot hard nproc  65000' /etc/security/limits.conf 
 sed -i '$aroot soft nofile 65000' /etc/security/limits.conf 
 sed -i '$aroot hard nofile 65000' /etc/security/limits.conf
-#su solr #solr
 cd /usr/local/solr/solr-8.11.1
 sudo -u solr bin/solr start
 sudo -u solr bin/solr create_core -c collection1 -d server/solr/collection1/conf/
@@ -83,8 +86,8 @@ sudo -u solr bin/solr create_core -c collection1 -d server/solr/collection1/conf
 apt-get -y install jq imagemagick curl libssl-dev libcurl4-openssl-dev
 useradd -m dataverse
 cd /home/dataverse
-wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
-wget https://github.com/IQSS/dataverse/archive/v5.12.1.tar.gz
+[ ! -f dvinstall.zip ] && wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
+[ ! -f v5.12.1.tar.gz ] && wget https://github.com/IQSS/dataverse/archive/v5.12.1.tar.gz
 unzip dvinstall.zip
 rm dvinstall.zip
 tar -vzxf v5.12.1.tar.gz
@@ -98,7 +101,7 @@ cp /home/dataverse/dvinstall/solrconfig.xml /usr/local/solr/solr-8.11.1/server/s
 useradd -m payara
 cd /home/payara
 # versão 6 
-wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
+[ ! -f payara-6.2023.10.zip ] && wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
 unzip payara-6.2023.10.zip
 rm payara-6.2023.10.zip
 chown -R payara:payara /home/payara
@@ -112,7 +115,7 @@ sudo -u dataverse /usr/local/payara6/bin/asadmin osgi lb #| grep 'Weld OSGi Bund
 # deve aprecer Command osgi executed successfully.
 r=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080)
 [ "$r"=="200" ] && echo "[INFO] Instalação do payara OK !" || echo "[ERRO] Corriga a instalação do payara !"
-
+sudo -u dataverse /usr/local/payara6/glassfish/bin/asadmin stop-domain
 # R
 
 apt-get -y install --no-install-recommends software-properties-common dirmngr
@@ -133,9 +136,14 @@ echo "Instalação do módulo IV. em desenvolvimento"
 # Dataverse
 
 cd /home/dataverse/dvinstall
+
+GLASSFISH_DIRECTORY = /usr/local/payara5
+sudo -u dataverse sed -i 's;GLASSFISH_DIRECTORY.*;GLASSFISH_DIRECTORY = /usr/local/payara6;' default.config
 sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' default.config
 sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' default.config
-sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' default.config
+sudo -u dataverse sed -i 's/POSTGRES_DATABASE =.*/POSTGRES_DATABASE = '$DATAVERSE_DB'/' default.config
+sudo -u dataverse sed -i 's/POSTGRES_USER =.*/POSTGRES_USER = '$DATAVERSE_DB_USER'/' default.config
+sudo -u dataverse sed -i 's/POSTGRES_PASSWORD =.*/POSTGRES_PASSWORD = '$DATAVERSE_DB_PASSWORD'/' default.config
 sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' default.config
 sudo -u dataverse sed -i 's/ADMIN_EMAIL =.*/ADMIN_EMAIL = '$ADMIN_EMAIL'/' default.config
 sudo -u dataverse ./install -y -f > install.out 2> install.err
@@ -181,6 +189,10 @@ systemctl daemon-reload
 systemctl enable payara.service
 systemctl enable solr.service
 
+systemctl restart solr.service
+systemctl restart payara.service
+
+
 ## fim
 #notas
 
@@ -189,4 +201,5 @@ systemctl enable solr.service
 
 #multipass info $VM | grep IPv4  | cut -c 17-30
 #10.199.87.190:8080
+
 
