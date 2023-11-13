@@ -5,6 +5,18 @@
 # multipass transfer install.sh ${VM}:install.sh
 # multipass shell dataverse ou
 # mutipass exec ${VM} -- sudo ./install.sh
+# multipass transfer .env ${VM}:.env
+
+# DOI obtido em aula
+if [ ! -f .env ] && touch .env && echo -e 'DOI_USERNAME="user_doi"
+DOI_PASSWORD="password_doi"
+POSTGRES_ADMIN_PASSWORD="postgres"
+DATAVERSE_DB="dataverse"
+DATAVERSE_DB_USER="dataverse"
+DATAVERSE_DB_PASSOWRD="dataverse"
+ADMIN_EMAIL="email@webmail.br"
+' > .env  && echo 'Altere o arquivo .env antes de iniciar a instalação!' && exit 1
+source .env
 
 add-apt-repository -y "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
 apt-get update
@@ -16,6 +28,7 @@ echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" 
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 apt-get update
 apt-get -y install postgresql-13
+pg_ctlcluster 13 main start
 sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*' #libera para todas as conexões/" /etc/postgresql/13/main/postgresql.conf
 #Comenta todas as linhas
 sed -i '/^#/! s/.*/#&/g' /etc/postgresql/13/main/pg_hba.conf
@@ -26,10 +39,18 @@ local   all             postgres                                trust \
 host    all             all             127.0.0.1/32            trust \
 host    all             all             ::1/128                 trust \
 host    all             all             0.0.0.0/0               trust' /etc/postgresql/13/main/pg_hba.conf
-service postgresql restart
-service postgresql status
+pg_ctlcluster 13 main restart
+#service postgresql restart
+pg_ctlcluster 13 main status
+#service postgresql status
 r=$(/usr/bin/psql -At -h 127.0.0.1 -p 5432 -U postgres -d postgres -c 'SELECT 1')
-[ "$r"=="1" ] && echo "[INFO] Instalação do postgres OK !" || echo "[ERRO] Corriga a instalação do postgres !"
+[ "$r"=="1" ] && echo "[INFO] Instalação do postgres OK !" || echo "[ERRO] Corriga a instalação do postgres !" 
+
+# criando o usuário e db do dataverse . devem constar no .env
+sudo -u postgres psql -c "create database $DATAVERSE_DB;
+create user $DATAVERSE_DB_USER with encrypted password '$DATAVERSE_DB_USER';
+grant all privileges on database $DATAVERSE_DB to $DATAVERSE_DB_USER;"
+
 
 # solr
 
@@ -76,28 +97,28 @@ cp /home/dataverse/dvinstall/solrconfig.xml /usr/local/solr/solr-8.11.1/server/s
 
 useradd -m payara
 cd /home/payara
-#correção: https://s3-eu-west-1.amazonaws.com/payara.fish/Payara+Downloads/5.2022.3/payara-5.2022.3.zip
-wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/5.2022.3/payara-5.2022.3.zip
-unzip payara-5.2022.3.zip
-rm payara-5.2022.3.zip 
+# versão 6 
+wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
+unzip payara-6.2023.10.zip
+rm payara-6.2023.10.zip
 chown -R payara:payara /home/payara
-mv payara5 /usr/local/.
-chown -R root:root /usr/local/payara5
-chown dataverse /usr/local/payara5/glassfish/lib
-chown -R dataverse:dataverse /usr/local/payara5/glassfish/domains/domain1
-sed -i 's;<jvm-options>-client</jvm-options>;<jvm-options>-server</jvm-options>;g' /usr/local/payara5/glassfish/domains/domain1/config/domain.xml
-sudo -u dataverse /usr/local/payara5/glassfish/bin/asadmin start-domain
-sudo -u dataverse /usr/local/payara5/bin/asadmin osgi lb | grep 'Weld OSGi Bundle'
+mv payara6 /usr/local/.
+chown -R root:root /usr/local/payara6
+chown dataverse /usr/local/payara6/glassfish/lib
+chown -R dataverse:dataverse /usr/local/payara6/glassfish/domains/domain1
+sed -i 's;<jvm-options>-client</jvm-options>;<jvm-options>-server</jvm-options>;g' /usr/local/payara6/glassfish/domains/domain1/config/domain.xml
+sudo -u dataverse /usr/local/payara6/glassfish/bin/asadmin start-domain
+sudo -u dataverse /usr/local/payara6/bin/asadmin osgi lb #| grep 'Weld OSGi Bundle'
+# deve aprecer Command osgi executed successfully.
 r=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080)
 [ "$r"=="200" ] && echo "[INFO] Instalação do payara OK !" || echo "[ERRO] Corriga a instalação do payara !"
 
 # R
 
-echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 apt-get -y install --no-install-recommends software-properties-common dirmngr
 wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
 add-apt-repository -y "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+sudo apt update
 apt-get install -y r-base r-base-core r-recommended r-base-dev
 R -e 'install.packages("R2HTML", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
 R -e 'install.packages("rjson", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
@@ -106,3 +127,66 @@ R -e 'install.packages("Rserve", repos="https://cloud.r-project.org/", lib="/usr
 R -e 'install.packages("haven", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
 
 echo "Instalação do módulo III concluída!"
+
+echo "Instalação do módulo IV. em desenvolvimento" 
+
+# Dataverse
+
+cd /home/dataverse/dvinstall
+sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' default.config
+sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' default.config
+sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' default.config
+sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' default.config
+sudo -u dataverse sed -i 's/ADMIN_EMAIL =.*/ADMIN_EMAIL = '$ADMIN_EMAIL'/' default.config
+sudo -u dataverse ./install -y -f > install.out 2> install.err
+cd /home/dataverse/dataverse-5.12.1/scripts/r/rserve/
+#Ativando o R server no dataverse
+sed -i 's/chkconfig rserve on/update-rc.d rserve defaults/' rserve-setup.sh
+sed -i '/^. \/etc\/rc.d\/init.d\/functions/s//#&/' rserve-startup.sh
+
+./rserve-setup.sh
+
+echo '[Unit]
+Description = Payara Server
+After = syslog.target network.target
+[Service]
+User=dataverse
+Type = forking
+ExecStart = /usr/local/payara6/glassfish/bin/asadmin start-domain
+ExecStop = /usr/local/payara6/glassfish/bin/asadmin stop-domain
+ExecReload = /usr/local/payara6/glassfish/bin/asadmin restart-domain
+TimeoutSec=900
+[Install]
+WantedBy = multi-user.target
+' > /etc/systemd/system/payara.service
+
+echo '[Unit]
+Description = Apache Solr
+After = syslog.target network.target remote-fs.target nss-lookup.target
+[Service]
+User = solr
+Type = forking
+WorkingDirectory = /usr/local/solr/solr-8.11.1
+ExecStart = bash /usr/local/solr/solr-8.11.1/bin/solr start
+ExecStop = bash /usr/local/solr/solr-8.11.1/bin/solr stop
+ExecReload= bash /usr/local/solr/solr-8.11.1/bin/solr stop
+LimitNOFILE=65000
+LimitNPROC=65000
+Restart=on-failure
+[Install]
+WantedBy = multi-user.target
+' > /etc/systemd/system/solr.service
+
+systemctl daemon-reload
+systemctl enable payara.service
+systemctl enable solr.service
+
+## fim
+#notas
+
+#systemctl status solr.service
+#systemctl status payara.service
+
+#multipass info $VM | grep IPv4  | cut -c 17-30
+#10.199.87.190:8080
+
