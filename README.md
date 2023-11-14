@@ -65,35 +65,36 @@ multipass purge
 
 ```
 VM="dataverse"
-$ multipass launch --name $VM -d 50G -m 4G -c 4
-$ multipass transfer install.sh ${VM}:install.sh
-$ multipass transfer .env ${VM}:.env
+multipass launch --name $VM -d 50G -m 4G -c 4
+multipass transfer install.sh ${VM}:install.sh
+multipass transfer .env ${VM}:.env
 
 # Acesse a VM via shell
-$ multipass shell ${VM}
+multipass shell ${VM}
 # ou
-$ multipass exec ${VM} -- sudo ./install.sh
-
+multipass exec ${VM} -- sudo ./install.sh
+```
 ## Opção 1 : Execução na VM via instalação completa
 Copie o install.sh do projeto e execute
-```
 
 #Para não executar o download durante a instalação
 #wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
-#wget https://github.com/IQSS/dataverse/archive/dataverse-5.12.1.tar.gz
+#wget https://github.com/IQSS/dataverse/archive/5.12.1.tar.gz
 #wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
 #wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
 
+```
 cd download
 wget http://150.165.250.2/~douglas/dataverse/dvinstall.zip
-wget http://150.165.250.2/~douglas/dataverse/dataverse-5.12.1.tar.gz
 wget http://150.165.250.2/~douglas/dataverse/payara-6.2023.10.zip
 wget http://150.165.250.2/~douglas/dataverse/solr-8.11.1.tgz
+wget https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.deb
 
 F='dvinstall.zip'; multipass transfer $F ${VM}:$F
 F='payara-6.2023.10.zip'; multipass transfer $F ${VM}:$F
-F='payara-6.2023.10.zip'; multipass transfer $F ${VM}:$F
-F='payara-6.2023.10.zip'; multipass transfer $F ${VM}:$F
+F='solr-8.11.1.tgz'; multipass transfer $F ${VM}:$F
+F='jdk-17_linux-x64_bin.deb'; multipass transfer $F ${VM}:$F
+
 cd -
 
 multipass transfer install.sh ${VM}:install.sh
@@ -105,8 +106,12 @@ ou
 ```
 multipass shell ${VM} 
 sudo su -
+cd /home/ubuntu
 ./install.sh
 ```
+
+Excluindo a VM: 
+multipass stop ${VM} && multipass delete ${VM} && multipass purge
 
 ## Opção 2 : Execução na VM via docker-compose:
 

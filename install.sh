@@ -8,12 +8,15 @@
 # multipass exec ${VM} -- sudo ./install.sh
 # multipass transfer .env ${VM}:.env
 
-#wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
-#wget https://github.com/IQSS/dataverse/archive/dataverse-5.12.1.tar.gz
+#wget https://github.com/IQSS/dataverse/releases/download/v6.0/dvinstall.zip
 #wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
 #wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
+#wget https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.deb
+
+SOLR_VERSION="9.3.0"
 
 # DOI obtido em aula
+cd /home/ubuntu
 [ ! -f .env ] && touch .env && echo 'DOI_USERNAME="user_doi"
 DOI_PASSWORD="password_doi"
 POSTGRES_ADMIN_PASSWORD="postgres"
@@ -25,7 +28,11 @@ ADMIN_EMAIL="email@webmail.br"
 source .env
 
 apt-get update
-apt-get -y install unzip openjdk-11-jdk wget   
+apt-get -y install libc6-i386 libc6-x32 libxi6 libxtst6 unzip wget   
+[ ! -f jdk-17_linux-x64_bin.deb ] && wget https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.deb
+chown _apt /var/lib/update-notifier/package-data-downloads/partial/
+apt-get -y install ./jdk-17_linux-x64_bin.deb 
+apt-get -y install --reinstall jdk-17
 
 # postgres
 
@@ -52,7 +59,7 @@ r=$(/usr/bin/psql -At -h 127.0.0.1 -p 5432 -U postgres -d postgres -c 'SELECT 1'
 [ "$r"=="1" ] && echo "[INFO] Instalação do postgres OK !" || echo "[ERRO] Corriga a instalação do postgres !" 
 
 # criando o usuário e db do dataverse . devem constar no .env
-sudo -u postgres psql -c "create database $DATAVERSE_DB;"
+#sudo -u postgres psql -c "create database $DATAVERSE_DB;"
 sudo -u postgres psql -c "create user $DATAVERSE_DB_USER with encrypted password '$DATAVERSE_DB_PASSOWRD';"
 sudo -u postgres psql -c "grant all privileges on database $DATAVERSE_DB to $DATAVERSE_DB_USER;"
 
@@ -60,14 +67,13 @@ sudo -u postgres psql -c "grant all privileges on database $DATAVERSE_DB to $DAT
 
 useradd -m solr
 mkdir /usr/local/solr
-chown solr:solr /usr/local/solr
+[ ! -f solr-9.3.0.tgz ] && wget https://archive.apache.org/dist/solr/solr/9.3.0/solr-9.3.0.tgz
+tar -xvzf solr-9.3.0.tgz -C /usr/local/solr
+cp -r /usr/local/solr/solr-9.3.0/server/solr/configsets/_default /usr/local/solr/solr-9.3.0/server/solr/collection1
+chown -R solr:solr /usr/local/solr
 cd /usr/local/solr
-[ ! -f solr-8.11.1.tgz ] && wget https://archive.apache.org/dist/lucene/solr/8.11.1/solr-8.11.1.tgz
-tar xvzf solr-8.11.1.tgz
-cp -r solr-8.11.1/server/solr/configsets/_default solr-8.11.1/server/solr/collection1
-chown -R solr:solr solr-8.11.1
 
-sed -i 's;<Set name="requestHeaderSize"><Property name="solr.jetty.request.header.size" default="8192" /></Set>;<Set name="requestHeaderSize"><Property name="solr.jetty.request.header.size" default="102400" /></Set>;' /usr/local/solr/solr-8.11.1/server/etc/jetty.xml
+sed -i 's;<Set name="requestHeaderSize"><Property name="solr.jetty.request.header.size" default="8192" /></Set>;<Set name="requestHeaderSize"><Property name="solr.jetty.request.header.size" default="102400" /></Set>;' /usr/local/solr/solr-9.3.0/server/etc/jetty.xml
 sed -i '$a#Instalação dataverse' /etc/security/limits.conf
 sed -i '$asolr soft nproc  65000' /etc/security/limits.conf
 sed -i '$asolr hard nproc  65000' /etc/security/limits.conf
@@ -77,45 +83,82 @@ sed -i '$aroot soft nproc  65000' /etc/security/limits.conf
 sed -i '$aroot hard nproc  65000' /etc/security/limits.conf 
 sed -i '$aroot soft nofile 65000' /etc/security/limits.conf 
 sed -i '$aroot hard nofile 65000' /etc/security/limits.conf
-cd /usr/local/solr/solr-8.11.1
+cd /usr/local/solr/solr-9.3.0
 sudo -u solr bin/solr start
 sudo -u solr bin/solr create_core -c collection1 -d server/solr/collection1/conf/
+
+echo '[Unit]
+Description = Apache Solr
+After = syslog.target network.target remote-fs.target nss-lookup.target
+[Service]
+User = solr
+Type = forking
+WorkingDirectory = /usr/local/solr/solr-9.3.0
+ExecStart = bash /usr/local/solr/solr-9.3.0/bin/solr start
+ExecStop = bash /usr/local/solr/solr-9.3.0/bin/solr stop
+ExecReload= bash /usr/local/solr/solr-9.3.0/bin/solr stop
+LimitNOFILE=65000
+LimitNPROC=65000
+Restart=on-failure
+[Install]
+WantedBy = multi-user.target
+' > /etc/systemd/system/solr.service
+sudo -u solr bin/solr stop
+systemctl daemon-reload
+systemctl restart solr.service
+systemctl enable solr.service
+systemctl status solr.service
 
 # Dataverse
 
 apt-get -y install jq imagemagick curl libssl-dev libcurl4-openssl-dev
 useradd -m dataverse
+cd /home/ubuntu
+[ ! -f dvinstall.zip ] && wget https://github.com/IQSS/dataverse/releases/download/v6.0/dvinstall.zip
+unzip dvinstall.zip -d /home/dataverse
 cd /home/dataverse
-[ ! -f dvinstall.zip ] && wget https://github.com/IQSS/dataverse/releases/download/v5.12.1/dvinstall.zip
-[ ! -f v5.12.1.tar.gz ] && wget https://github.com/IQSS/dataverse/archive/v5.12.1.tar.gz
-unzip dvinstall.zip
-rm dvinstall.zip
-tar -vzxf v5.12.1.tar.gz
-rm v5.12.1.tar.gz
 chown -R dataverse:dataverse /home/dataverse
-cp /home/dataverse/dvinstall/schema.xml /usr/local/solr/solr-8.11.1/server/solr/collection1/conf
-cp /home/dataverse/dvinstall/solrconfig.xml /usr/local/solr/solr-8.11.1/server/solr/collection1/conf
-
+cp /home/dataverse/dvinstall/schema*.xml /usr/local/solr/solr-9.3.0/server/solr/collection1/conf
+cp /home/dataverse/dvinstall/solrconfig.xml /usr/local/solr/solr-9.3.0/server/solr/collection1/conf
+sed 's;       <jvm-options>-Xbootclasspath/a:${com.sun.aas.installRoot}/lib/grizzly-npn-api.jar</jvm-options>;       <jvm-options>-Xbootclasspath/a:${com.sun.aas.installRoot}/lib/grizzly-npn-api.jar</jvm-options>\n        <jvm-options>-Ddataverse.path.imagemagick.convert=/opt/local/bin/convert</jvm-options>;' /usr/local/payara6/glassfish/domains/domain1/config/domain.xml
+       
 # Payara
 
 useradd -m payara
-cd /home/payara
+cd /home/ubuntu
 # versão 6 
 [ ! -f payara-6.2023.10.zip ] && wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
-unzip payara-6.2023.10.zip
-rm payara-6.2023.10.zip
-chown -R payara:payara /home/payara
-mv payara6 /usr/local/.
+unzip payara-6.2023.10.zip -d /usr/local
+#cd /home/payara
+#chown -R payara:payara /home/payara
+#mv payara6 /usr/local/.
 chown -R root:root /usr/local/payara6
 chown dataverse /usr/local/payara6/glassfish/lib
 chown -R dataverse:dataverse /usr/local/payara6/glassfish/domains/domain1
-sed -i 's;<jvm-options>-client</jvm-options>;<jvm-options>-server</jvm-options>;g' /usr/local/payara6/glassfish/domains/domain1/config/domain.xml
 sudo -u dataverse /usr/local/payara6/glassfish/bin/asadmin start-domain
-sudo -u dataverse /usr/local/payara6/bin/asadmin osgi lb #| grep 'Weld OSGi Bundle'
-# deve aprecer Command osgi executed successfully.
+sudo -u dataverse /usr/local/payara6/bin/asadmin osgi lb
+# deve aparecer Command osgi executed successfully.
 r=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080)
 [ "$r"=="200" ] && echo "[INFO] Instalação do payara OK !" || echo "[ERRO] Corriga a instalação do payara !"
 sudo -u dataverse /usr/local/payara6/glassfish/bin/asadmin stop-domain
+echo '[Unit]
+Description = Payara Server
+After = syslog.target network.target
+[Service]
+User=dataverse
+Type = forking
+ExecStart = /usr/local/payara6/glassfish/bin/asadmin start-domain
+ExecStop = /usr/local/payara6/glassfish/bin/asadmin stop-domain
+ExecReload = /usr/local/payara6/glassfish/bin/asadmin restart-domain
+TimeoutSec=900
+[Install]
+WantedBy = multi-user.target
+' > /etc/systemd/system/payara.service
+systemctl daemon-reload
+systemctl enable payara.service
+systemctl restart payara.service
+systemctl status payara.service
+
 # R
 
 apt-get -y install --no-install-recommends software-properties-common dirmngr
@@ -137,7 +180,7 @@ echo "Instalação do módulo IV. em desenvolvimento"
 
 cd /home/dataverse/dvinstall
 
-GLASSFISH_DIRECTORY = /usr/local/payara5
+GLASSFISH_DIRECTORY=/usr/local/payara6
 sudo -u dataverse sed -i 's;GLASSFISH_DIRECTORY.*;GLASSFISH_DIRECTORY = /usr/local/payara6;' default.config
 sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' default.config
 sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' default.config
@@ -146,7 +189,11 @@ sudo -u dataverse sed -i 's/POSTGRES_USER =.*/POSTGRES_USER = '$DATAVERSE_DB_USE
 sudo -u dataverse sed -i 's/POSTGRES_PASSWORD =.*/POSTGRES_PASSWORD = '$DATAVERSE_DB_PASSWORD'/' default.config
 sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' default.config
 sudo -u dataverse sed -i 's/ADMIN_EMAIL =.*/ADMIN_EMAIL = '$ADMIN_EMAIL'/' default.config
-sudo -u dataverse ./install -y -f > install.out 2> install.err
+
+apt-get -y install python3-pip
+pip3 install psycopg2-binary #psycopg2
+python3 install.py -y
+
 cd /home/dataverse/dataverse-5.12.1/scripts/r/rserve/
 #Ativando o R server no dataverse
 sed -i 's/chkconfig rserve on/update-rc.d rserve defaults/' rserve-setup.sh
@@ -154,43 +201,10 @@ sed -i '/^. \/etc\/rc.d\/init.d\/functions/s//#&/' rserve-startup.sh
 
 ./rserve-setup.sh
 
-echo '[Unit]
-Description = Payara Server
-After = syslog.target network.target
-[Service]
-User=dataverse
-Type = forking
-ExecStart = /usr/local/payara6/glassfish/bin/asadmin start-domain
-ExecStop = /usr/local/payara6/glassfish/bin/asadmin stop-domain
-ExecReload = /usr/local/payara6/glassfish/bin/asadmin restart-domain
-TimeoutSec=900
-[Install]
-WantedBy = multi-user.target
-' > /etc/systemd/system/payara.service
 
-echo '[Unit]
-Description = Apache Solr
-After = syslog.target network.target remote-fs.target nss-lookup.target
-[Service]
-User = solr
-Type = forking
-WorkingDirectory = /usr/local/solr/solr-8.11.1
-ExecStart = bash /usr/local/solr/solr-8.11.1/bin/solr start
-ExecStop = bash /usr/local/solr/solr-8.11.1/bin/solr stop
-ExecReload= bash /usr/local/solr/solr-8.11.1/bin/solr stop
-LimitNOFILE=65000
-LimitNPROC=65000
-Restart=on-failure
-[Install]
-WantedBy = multi-user.target
-' > /etc/systemd/system/solr.service
 
-systemctl daemon-reload
-systemctl enable payara.service
-systemctl enable solr.service
 
-systemctl restart solr.service
-systemctl restart payara.service
+
 
 
 ## fim
