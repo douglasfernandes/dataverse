@@ -177,17 +177,31 @@ python3 install.py -y
 #RSERVE="/home/dataverse/dataverse-5.12.1/scripts/r/rserve/rserve-setup.sh"
 #sed -i 's/chkconfig rserve on/update-rc.d rserve defaults/' ${RSERVE}
 #sed -i '/^. \/etc\/rc.d\/init.d\/functions/s//#&/' ${RSERVE}
-
 #${RSERVE}
 
+#email
 
-## fim
-#notas
+CONFIG_DOMAIN="/usr/local/payara6/glassfish/domains/domain1/config/domain.xml"
 
-#systemctl restart solr.service
-#systemctl restart payara.service
+#alterar email
+export EMAIL_FROM=""
+export EMAIL_USER=""
+export EMAIL_PASSWORD=""
+sed -i 's;<mail-resource auth=.*;<mail-resource auth="false" host="smtp.gmail.com" from="${EMAIL_FROM}" user="${EMAIL_USER}" jndi-name="mail/notifyMailSession">
+      <property name="mail.smtp.port" value="465"></property>
+      <property name="mail.smtp.socketFactory.fallback" value="false"></property>
+      <property name="mail.smtp.socketFactory.port" value="465"></property>
+      <property name="mail.smtp.socketFactory.class" value="javax.net.ssl.SSLSocketFactory"></property>
+      <property name="mail.smtp.auth" value="true"></property>
+      <property name="mail.smtp.password" value="${EMAIL_PASSWORD}"></property>
+    </mail-resource>
+;' $CONFIG_DOMAIN
+export DOMINIO="dadosabertos.br"
+sed -i 's;<jvm-options>-Ddataverse.fqdn=dataverse</jvm-options>;<jvm-options>-Ddataverse.fqdn=${DOMINIO}</jvm-options>;' $CONFIG_DOMAIN
+sed -i 's;<jvm-options>-Ddataverse.siteUrl=http://${dataverse.fqdn}:8080</jvm-options>;<jvm-options>-Ddataverse.siteUrl=http:/${DOMINIO}:8080</jvm-options>;' $CONFIG
 
-#multipass info $VM | grep IPv4  | cut -c 17-30
-#10.199.87.190:8080
 
+#definir cabeçalho
+curl -X PUT -d 'UFPB <dadosabertos@ufpb.br>' http://localhost:8080/api/admin/settings/:SystemEmail
+curl -X PUT -d true http://localhost:8080/api/admin/settings/:SendNotificationOnDatasetCreation
 
