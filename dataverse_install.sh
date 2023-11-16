@@ -13,6 +13,10 @@ DATAVERSE_DB="dataverse"
 DATAVERSE_DB_USER="dataverse"
 DATAVERSE_DB_PASSWORD="dataverse"
 ADMIN_EMAIL="email@webmail.br"
+EMAIL_FROM=""
+EMAIL_USER=""
+EMAIL_PASSWORD=""
+DOMINIO="dadosabertos.br"
 ' > ${DIR_DOWNLOAD}/.env  && echo 'Altere o arquivo .env antes de iniciar a instalação!' && exit 1
 source ${DIR_DOWNLOAD}/.env
 
@@ -187,6 +191,7 @@ CONFIG_DOMAIN="/usr/local/payara6/glassfish/domains/domain1/config/domain.xml"
 export EMAIL_FROM=""
 export EMAIL_USER=""
 export EMAIL_PASSWORD=""
+export DOMINIO="dadosabertos.br"
 sed -i 's;<mail-resource auth=.*;<mail-resource auth="false" host="smtp.gmail.com" from="${EMAIL_FROM}" user="${EMAIL_USER}" jndi-name="mail/notifyMailSession">
       <property name="mail.smtp.port" value="465"></property>
       <property name="mail.smtp.socketFactory.fallback" value="false"></property>
@@ -196,9 +201,10 @@ sed -i 's;<mail-resource auth=.*;<mail-resource auth="false" host="smtp.gmail.co
       <property name="mail.smtp.password" value="${EMAIL_PASSWORD}"></property>
     </mail-resource>
 ;' $CONFIG_DOMAIN
-export DOMINIO="dadosabertos.br"
 sed -i 's;<jvm-options>-Ddataverse.fqdn=dataverse</jvm-options>;<jvm-options>-Ddataverse.fqdn=${DOMINIO}</jvm-options>;' $CONFIG_DOMAIN
 sed -i 's;<jvm-options>-Ddataverse.siteUrl=http://${dataverse.fqdn}:8080</jvm-options>;<jvm-options>-Ddataverse.siteUrl=http:/${DOMINIO}:8080</jvm-options>;' $CONFIG
+
+#idioma
 
 
 #definir cabeçalho
