@@ -102,26 +102,21 @@ systemctl status solr.service
 
 apt-get -y install jq imagemagick curl libssl-dev libcurl4-openssl-dev
 useradd -m dataverse
+cd /home/dataverse
 [ ! -f ${DIR_DOWNLOAD}/dvinstall.zip ] && wget https://github.com/IQSS/dataverse/releases/download/v6.0/dvinstall.zip -P ${DIR_DOWNLOAD}/
 unzip ${DIR_DOWNLOAD}/dvinstall.zip -d /home/dataverse
-cd /home/dataverse
 chown -R dataverse:dataverse /home/dataverse
 cp /home/dataverse/dvinstall/schema*.xml /usr/local/solr/solr-9.3.0/server/solr/collection1/conf
 cp /home/dataverse/dvinstall/solrconfig.xml /usr/local/solr/solr-9.3.0/server/solr/collection1/conf
-sed 's;       <jvm-options>-Xbootclasspath/a:${com.sun.aas.installRoot}/lib/grizzly-npn-api.jar</jvm-options>;       <jvm-options>-Xbootclasspath/a:${com.sun.aas.installRoot}/lib/grizzly-npn-api.jar</jvm-options>\n        <jvm-options>-Ddataverse.path.imagemagick.convert=/opt/local/bin/convert</jvm-options>;' /usr/local/payara6/glassfish/domains/domain1/config/domain.xml
        
 # Payara
 
 useradd -m payara
 # versão 6 
 [ ! -f ${DIR_DOWNLOAD}/payara-6.2023.10.zip ] && wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip -P ${DIR_DOWNLOAD}/
-unzip payara-6.2023.10.zip -d /usr/local
-#cd /home/payara
-#chown -R payara:payara /home/payara
-#mv payara6 /usr/local/.
-chown -R root:root /usr/local/payara6
-chown dataverse /usr/local/payara6/glassfish/lib
-chown -R dataverse:dataverse /usr/local/payara6/glassfish/domains/domain1
+unzip ${DIR_DOWNLOAD}/payara-6.2023.10.zip -d /usr/local
+sed -i 's;       <jvm-options>-Xbootclasspath/a:${com.sun.aas.installRoot}/lib/grizzly-npn-api.jar</jvm-options>;       <jvm-options>-Xbootclasspath/a:${com.sun.aas.installRoot}/lib/grizzly-npn-api.jar</jvm-options>\n        <jvm-options>-Ddataverse.path.imagemagick.convert=/opt/local/bin/convert</jvm-options>;' /usr/local/payara6/glassfish/domains/domain1/config/domain.xml
+chown -R dataverse /usr/local/payara6
 sudo -u dataverse /usr/local/payara6/glassfish/bin/asadmin start-domain
 sudo -u dataverse /usr/local/payara6/bin/asadmin osgi lb
 # deve aparecer Command osgi executed successfully.
@@ -148,52 +143,49 @@ systemctl status payara.service
 
 # R
 
-apt-get -y install --no-install-recommends software-properties-common dirmngr
+apt-get -y install --no-install-recommends software-properties-common dirmngr python3-pip
 wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
 add-apt-repository -y "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
-sudo apt update
+apt update
 apt-get install -y r-base r-base-core r-recommended r-base-dev
-R -e 'install.packages("R2HTML", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
-R -e 'install.packages("rjson", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
-R -e 'install.packages("DescTools", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
-R -e 'install.packages("Rserve", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
-R -e 'install.packages("haven", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )'
-
-echo "Instalação do módulo III concluída!"
-
-echo "Instalação do módulo IV. em desenvolvimento" 
+R -e 'install.packages("R2HTML", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )' &
+R -e 'install.packages("rjson", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )' &
+R -e 'install.packages("DescTools", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )' &
+R -e 'install.packages("Rserve", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )' &
+R -e 'install.packages("haven", repos="https://cloud.r-project.org/", lib="/usr/lib/R/library" )' &
+wait
 
 # Dataverse
 
-#cd /home/dataverse/dvinstall
+CONFIG="/home/dataverse/dvinstall/default.config"
+#GLASSFISH_DIRECTORY=/usr/local/payara6
+sudo -u dataverse sed -i 's;GLASSFISH_DIRECTORY.*;GLASSFISH_DIRECTORY = /usr/local/payara6;' $CONFIG
+sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' $CONFIG
+sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' $CONFIG
+sudo -u dataverse sed -i 's/POSTGRES_DATABASE =.*/POSTGRES_DATABASE = '$DATAVERSE_DB'/' $CONFIG
+sudo -u dataverse sed -i 's/POSTGRES_USER =.*/POSTGRES_USER = '$DATAVERSE_DB_USER'/' $CONFIG
+sudo -u dataverse sed -i 's/POSTGRES_PASSWORD =.*/POSTGRES_PASSWORD = '$DATAVERSE_DB_PASSWORD'/' $CONFIG
+sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' $CONFIG
+sudo -u dataverse sed -i 's/ADMIN_EMAIL =.*/ADMIN_EMAIL = '$ADMIN_EMAIL'/' $CONFIG
 
-GLASSFISH_DIRECTORY=/usr/local/payara6
-sudo -u dataverse sed -i 's;GLASSFISH_DIRECTORY.*;GLASSFISH_DIRECTORY = /usr/local/payara6;' default.config
-sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' default.config
-sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' default.config
-sudo -u dataverse sed -i 's/POSTGRES_DATABASE =.*/POSTGRES_DATABASE = '$DATAVERSE_DB'/' default.config
-sudo -u dataverse sed -i 's/POSTGRES_USER =.*/POSTGRES_USER = '$DATAVERSE_DB_USER'/' default.config
-sudo -u dataverse sed -i 's/POSTGRES_PASSWORD =.*/POSTGRES_PASSWORD = '$DATAVERSE_DB_PASSWORD'/' default.config
-sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' default.config
-sudo -u dataverse sed -i 's/ADMIN_EMAIL =.*/ADMIN_EMAIL = '$ADMIN_EMAIL'/' default.config
 
-apt-get -y install python3-pip
 pip3 install psycopg2-binary #psycopg2
-python3 /home/dataverse/dvinstall/install.py -y
+cd /home/dataverse/dvinstall
+python3 install.py -y
 
-DIR_RSERVE="/home/dataverse/dataverse-5.12.1/scripts/r/rserve/"
 #Ativando o R server no dataverse
-sed -i 's/chkconfig rserve on/update-rc.d rserve defaults/' ${DIR_RSERVE}/rserve-setup.sh
-sed -i '/^. \/etc\/rc.d\/init.d\/functions/s//#&/' ${DIR_RSERVE}/rserve-startup.sh
+#RSERVE="/home/dataverse/dataverse-5.12.1/scripts/r/rserve/rserve-setup.sh"
+#sed -i 's/chkconfig rserve on/update-rc.d rserve defaults/' ${RSERVE}
+#sed -i '/^. \/etc\/rc.d\/init.d\/functions/s//#&/' ${RSERVE}
 
-${DIR_RSERVE}/rserve-setup.sh
+#${RSERVE}
 
 
 ## fim
 #notas
 
-#systemctl status solr.service
-#systemctl status payara.service
+#systemctl restart solr.service
+#systemctl restart payara.service
 
 #multipass info $VM | grep IPv4  | cut -c 17-30
 #10.199.87.190:8080

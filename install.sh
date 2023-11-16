@@ -1,20 +1,13 @@
 #!/bin/bash
 
-#altere para o seu diretório de projeto
-export DIR_PROJECT="${HOME}/douglas500/sti/desenvolvimento/repositorios/dataverse"
-export DIR_PROJECT="${HOME}/douglas500/dev/dataverse/dataverse"
-
-[ -z ${DIR_PROJECT} ] && echo -e 'Informe o diretório do projeto. Ex:\n  export DIR_PROJECT="${HOME}/dev/evor"' && exit 1
-
-YML="${DIR_PROJECT}/dataverse/docker-compose-dev.yml"
+YML="./dataverse/docker-compose-dev.yml"
 OPTSTRING=":umdbhi"
 BUILD=false
 FORMA="d" #d=docker ; m=multipass
 
-# Docker exemplo
-# https://github.com/docker/awesome-compose/tree/master/official-documentation-samples/django/
+[ ! -f 'dataverse_install.sh' ] && echo 'Instalação não localizada "'$(PWD)'/dataverse_install.sh" não localizada!' && exit 1
 
-# instalando o docker na vm 
+#Instalando os apps necessários
 function installApps() {
   echo "informe a senha do usuário: "
   sudo apt-get update -y
@@ -41,12 +34,11 @@ function installDocker() {
     BUILD=true
   fi
   # se o projeto não existir, baixa:
-  if [ ! -d "${DIR_PROJECT}/dataverse" ]; then
+  if [ ! -d "./dataverse" ]; then
    echo "Projeto dataverse ainda não existe. Baixando ..."
-   git clone https://github.com/IQSS/dataverse.git ${DIR_PROJECT}/dataverse
+   git clone https://github.com/IQSS/dataverse.git ./dataverse
   fi
-  cd ${DIR_PROJECT}
-  source ${DIR_PROJECT}/dataverse/.env
+  source ./dataverse/.env
   #build do app
   [ ${BUILD} ] && docker-compose -f ${YML} build
   #Levanta os containers via docker em segundo plano
@@ -59,29 +51,32 @@ function installDocker() {
 #Encerra os serviços
 function delDocker() {
   echo "del docker"
-  cd ${DIR_PROJECT}/dataverse
   docker-compose -f ${YML} down
-  cd -
+}
+
+#baixa se não existir
+function download() {
+  LINK="$1"
+  FILE="$2"
+  [ ! -f $FILE ] && wget $LINK -P $FILE
 }
 
 #instala em uma VM baseada no multipass
 function installMultipass() {
   echo "Install via multipass"
-  mkdir -p ${DIR_PROJECT}/download
-  cd ${DIR_PROJECT}/download
+  mkdir -p ./download
   #baixa os pacotes previamente
-  [ ! -f solr-9.3.0.tgz ] && wget https://archive.apache.org/dist/solr/solr/9.3.0/solr-9.3.0.tgz
-  [ ! -f jdk-17_linux-x64_bin.deb ] && wget https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.deb
-  [ ! -f dvinstall.zip ] && wget https://github.com/IQSS/dataverse/releases/download/v6.0/dvinstall.zip
-  [ ! -f payara-6.2023.10.zip ] && wget https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip
-  cd -
+  download 'https://archive.apache.org/dist/solr/solr/9.3.0/solr-9.3.0.tgz' './download/solr-9.3.0.tgz'
+  download 'https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.deb' './download/jdk-17_linux-x64_bin.deb'
+  download 'https://github.com/IQSS/dataverse/releases/download/v6.0/dvinstall.zip' './download/dvinstall.zip'
+  download 'https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip' './download/payara-6.2023.10.zip'
   cp dataverse_install.sh download
   cp .env download
   VM="dataverse"
-  #multipass launch --name $VM -d 50G -m 4G -c 4  
-
-  multipass launch --name $VM -d 20G -m 4G -c 3
-  multipass mount ${DIR_PROJECT}/download ${VM}:download
+  echo "Criando a VM $VM"
+  multipass launch --name $VM -d 50G -m 4G -c 4  
+  multipass mount ./download ${VM}:download
+  echo "Executando a instalação"
   multipass exec ${VM} -- sudo download/dataverse_install.sh | tee log.txt  
   IP=$(multipass info ${VM} | grep IPv4 | cut -c 17-30)
   echo "Abra a página via: http://${IP}:8080"
