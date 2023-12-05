@@ -1,0 +1,41 @@
+<!-- Load web component along with Polymer shim in case browser support not there yet. -->
+<script src="//static.lib.virginia.edu/js/controllers/libradata.js"></script>
+
+    <style>
+        /* NOTE: You can use the custom CSS configuration to move this CSS your own stylesheet... */
+
+        #custom-header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        #dataverse-header-block {
+            position: relative;
+            width: 100%;
+            padding-top: 0px;
+            z-index: 930;
+        }
+        
+        .navbar-fixed-top {
+        	position: fixed;
+ 					top: 74px;
+					padding-top: 10px;
+        }
+        
+        #dataverseHeader {
+        	position: relative;
+        	top: 140px;
+        	padding-top: 1em;
+        }
+        
+        #content {
+        	position: relative;
+        	top: 150px;
+        	min-height: 1575px;
+        }
+    </style>
+    <div id="custom-header">
+      <uvalib-header simple>Cabeçalho customizado!</uvalib-header>
+    </div>

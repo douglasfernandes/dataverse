@@ -72,6 +72,7 @@ function installMultipass() {
   download 'https://nexus.payara.fish/repository/payara-community/fish/payara/distributions/payara/6.2023.10/payara-6.2023.10.zip' './download/payara-6.2023.10.zip'
   cp dataverse_install.sh download
   cp .env download
+  cp languages.zip download
   VM="dataverse"
   echo "Criando a VM $VM"
   multipass launch --name $VM -d 50G -m 4G -c 4  

@@ -140,10 +140,10 @@ TimeoutSec=900
 [Install]
 WantedBy = multi-user.target
 ' > /etc/systemd/system/payara.service
-systemctl daemon-reload
-systemctl enable payara.service
-systemctl restart payara.service
-systemctl status payara.service
+sudo systemctl daemon-reload
+sudo systemctl enable payara.service
+sudo systemctl restart payara.service
+sudo systemctl status payara.service
 
 # R
 
@@ -204,10 +204,59 @@ sed -i 's;<mail-resource auth=.*;<mail-resource auth="false" host="smtp.gmail.co
 sed -i 's;<jvm-options>-Ddataverse.fqdn=dataverse</jvm-options>;<jvm-options>-Ddataverse.fqdn=${DOMINIO}</jvm-options>;' $CONFIG_DOMAIN
 sed -i 's;<jvm-options>-Ddataverse.siteUrl=http://${dataverse.fqdn}:8080</jvm-options>;<jvm-options>-Ddataverse.siteUrl=http:/${DOMINIO}:8080</jvm-options>;' $CONFIG
 
+#Customização
+
+sudo mkdir -p /usr/local/payara6/glassfish/domains/domain1/docroot/logos/navbar
+sudo cp /home/ubuntu/download/img/logo.png /usr/local/payara6/glassfish/domains/domain1/docroot/logos/navbar
+
+#excluir depois
+sudo chown -R dataverse /usr/local/payara6
+
+curl -X PUT -d '/logos/navbar/logo.png' http://localhost:8080/api/admin/settings/:LogoCustomizationFile
+
+sudo mkdir -p /var/www/dataverse/branding/
+
+# homepage
+sudo cp download/custom/custom-homepage.html /var/www/dataverse/branding/
+curl -X PUT -d '/var/www/dataverse/branding/custom-homepage.html' http://localhost:8080/api/admin/settings/:HomePageCustomizationFile
+
+# Header
+sudo cp download/custom/custom-header.html /var/www/dataverse/branding/custom-header.html
+curl -X PUT -d '/var/www/dataverse/branding/custom-header.html' http://localhost:8080/api/admin/settings/:HeaderCustomizationFile
+
+#Footer
+sudo cp download/custom/custom-footer.html /var/www/dataverse/branding/custom-footer.html
+curl -X PUT -d '/var/www/dataverse/branding/custom-footer.html' http://localhost:8080/api/admin/settings/:FooterCustomizationFile
+
 #idioma
 
+# Fonte: https://github.com/ReneFGJr/Dataverse-RNP-ESR/blob/main/Commons/Language/install.sh
 
-#definir cabeçalho
-curl -X PUT -d 'UFPB <dadosabertos@ufpb.br>' http://localhost:8080/api/admin/settings/:SystemEmail
-curl -X PUT -d true http://localhost:8080/api/admin/settings/:SendNotificationOnDatasetCreation
+echo "Criar Pastas"
+sudo mkdir -p /var/www/dataverse/langBundles
+export PAYARA=/usr/local/payara6/glassfish
+LANGUAGE_ZIP=/home/ubuntu/download/languages.zip
+
+echo "Criando parametro para o Payara"
+sudo $PAYARA/bin/asadmin create-jvm-options '-Ddataverse.lang.directory=/var/www/dataverse/langBundles'
+sudo $PAYARA/bin/asadmin stop-domain
+
+echo "Enviando Arquivo"
+sudo $PAYARA/bin/asadmin start-domain
+curl http://localhost:8080/api/admin/datasetfield/loadpropertyfiles -X POST --upload-file $LANGUAGE_ZIP -H "Content-Type: application/zip"
+sudo $PAYARA/bin/asadmin stop-domain
+
+echo "Definindo os idiomas ativos"
+sudo $PAYARA/bin/asadmin start-domain
+echo "===>Definindo os idiomas do Dataverse e suas extensões"
+curl http://localhost:8080/api/admin/settings/:Languages -X PUT -d '[{"locale":"en","title":"Idioma Padrão"},  {"locale":"us","title":"English"}, {"locale":"br","title":"Português"}, {"locale":"es","title":"Espanhol"}]'
+sudo $PAYARA/bin/asadmin stop-domain
+
+echo "Reinicializando"
+sudo $PAYARA/bin/asadmin start-domain
+
+
+#definir cabeçalho do e-mail
+#curl -X PUT -d 'UFPB <dadosabertos@ufpb.br>' http://localhost:8080/api/admin/settings/:SystemEmail
+#curl -X PUT -d true http://localhost:8080/api/admin/settings/:SendNotificationOnDatasetCreation
 
