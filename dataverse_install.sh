@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/bin/bash -x
 # Instala o dataverse em VM 
 
 SOLR_VERSION="9.3.0"
+export PAYARA=/usr/local/payara6/glassfish
 
 function waitDataverse(){
   i=0
@@ -249,7 +250,6 @@ curl -X PUT -d '/var/www/dataverse/branding/custom-footer.html' http://localhost
 echo "Criar Pastas"
 sudo mkdir -p /var/www/dataverse/langBundles
 sudo chown dataverse /var/www/dataverse/langBundles
-export PAYARA=/usr/local/payara6/glassfish
 LANGUAGE_ZIP=/home/ubuntu/download/languages.zip
 
 echo "Criando parametro para o Payara"
@@ -274,9 +274,34 @@ sudo $PAYARA/bin/asadmin start-domain
 waitDataverse
 
 #Shibboleth
-sudo apt -y install shibboleth-sp-utils
+#gerando o ssl
+funtion shibboleth() {
+  OPENSSL_CNF="/home/ubuntu/download/openssl.cnf"
 
+  sudo apt -y install shibboleth-sp-utils apache2 libapache2-mod-shib
+  sudo a2enmod shib
+  sudo a2enmod proxy proxy_ajp
+  sudo systemctl restart apache2
+  shibd -t
 
+  echo " 
+<IfModule mod_ssl.c>
+  <VirtualHost *:443>
+    ProxyPass /Shibboleth.sso !
+    ProxyPassMatch ^/Shibboleth.sso !
+    ProxyPassMatch ^/shibboleth-ds !
+    ProxyPass / ajp://localhost:8009/
+    <Location /shib.xhtml>
+      AuthType shibboleth
+      ShibRequestSetting requireSession 1
+      require valid-user
+    </Location>
+  </VirtualHost>
+</IfModule>" | sudo tee --append /etc/apache2/apache2.conf
+  sudo $PAYARA/bin/asadmin create-network-listener --protocol http-listener-1 --listenerport 8009 --jkenabled true jk-connector
+}
+
+#problemas na publicação de arquivos
 
 #definir cabeçalho do e-mail
 #curl -X PUT -d 'UFPB <dadosabertos@ufpb.br>' http://localhost:8080/api/admin/settings/:SystemEmail

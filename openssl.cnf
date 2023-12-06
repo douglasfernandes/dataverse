@@ -1,0 +1,27 @@
+[ req ]
+default_bits = 2048 # Size of keys
+string_mask = nombstr # permitted characters
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]
+# Variable name Prompt string
+#---------------------- ----------------------------------
+0.organizationName = UFPB/STI
+organizationalUnitName = GSI/STI
+emailAddress = douglas@sti.ufpb.br
+emailAddress_max = 40
+localityName = João Pessoa
+stateOrProvinceName = Paraíba
+countryName = Brasil
+countryName_min = 2
+countryName_max = 2
+commonName = dadosabertos.sti.ufpb.br
+commonName_max = 64
+# Default values for the above, for consistency and less typing.
+# Variable name Value
+#------------------------------ ------------------------------
+#0.organizationName_default =
+organizationalUnitName_default = GSI
+#localityName_default = Porto Alegre
+#stateOrProvinceName_default = Rio Grande do Sul
+countryName_default = BR
+commonName_default = $HOSTNAME

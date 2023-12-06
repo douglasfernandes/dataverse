@@ -73,6 +73,7 @@ function installMultipass() {
   cp dataverse_install.sh download
   cp .env download
   cp languages.zip download
+  cp openssl.cnf download
   VM="dataverse"
   echo "Criando a VM $VM"
   multipass launch --name $VM -d 50G -m 4G -c 4  
