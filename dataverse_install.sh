@@ -3,7 +3,19 @@
 
 SOLR_VERSION="9.3.0"
 
-# DOI obtido em aula
+function waitDataverse(){
+  i=0
+  STATUS=false 
+  echo "Aguarde a inicialização do serviço dataverse ..."
+  while $STATUS ; do
+    echo "$i"
+    let i++
+    [ $(curl -s 'http://localhost:8080/api/search?q=*' | jq -r '.status') == "OK" ] && STATUS=true   
+  done
+  echo "Serviço dataverse OK !"
+}
+
+# DOI teste obtido em sala
 DIR_DOWNLOAD="/home/ubuntu/download"
 cd /home/ubuntu
 [ ! -f ${DIR_DOWNLOAD}/.env ] && touch ${DIR_DOWNLOAD}/.env && echo 'DOI_USERNAME="user_doi"
@@ -164,14 +176,16 @@ wait
 CONFIG="/home/dataverse/dvinstall/default.config"
 #GLASSFISH_DIRECTORY=/usr/local/payara6
 sudo -u dataverse sed -i 's;GLASSFISH_DIRECTORY.*;GLASSFISH_DIRECTORY = /usr/local/payara6;' $CONFIG
-sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' $CONFIG
-sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' $CONFIG
+
+#teste dem DOI
+#sudo -u dataverse sed -i 's/DOI_USERNAME =.*/DOI_USERNAME = '$DOI_USERNAME'/' $CONFIG
+#sudo -u dataverse sed -i 's/DOI_PASSWORD =.*/DOI_PASSWORD = '$DOI_PASSWORD'/' $CONFIG
+
 sudo -u dataverse sed -i 's/POSTGRES_DATABASE =.*/POSTGRES_DATABASE = '$DATAVERSE_DB'/' $CONFIG
 sudo -u dataverse sed -i 's/POSTGRES_USER =.*/POSTGRES_USER = '$DATAVERSE_DB_USER'/' $CONFIG
 sudo -u dataverse sed -i 's/POSTGRES_PASSWORD =.*/POSTGRES_PASSWORD = '$DATAVERSE_DB_PASSWORD'/' $CONFIG
 sudo -u dataverse sed -i 's/POSTGRES_ADMIN_PASSWORD =.*/POSTGRES_ADMIN_PASSWORD = '$POSTGRES_ADMIN_PASSWORD'/' $CONFIG
 sudo -u dataverse sed -i 's/ADMIN_EMAIL =.*/ADMIN_EMAIL = '$ADMIN_EMAIL'/' $CONFIG
-
 
 pip3 install psycopg2-binary #psycopg2
 cd /home/dataverse/dvinstall
@@ -234,6 +248,7 @@ curl -X PUT -d '/var/www/dataverse/branding/custom-footer.html' http://localhost
 
 echo "Criar Pastas"
 sudo mkdir -p /var/www/dataverse/langBundles
+sudo chown dataverse /var/www/dataverse/langBundles
 export PAYARA=/usr/local/payara6/glassfish
 LANGUAGE_ZIP=/home/ubuntu/download/languages.zip
 
@@ -243,17 +258,24 @@ sudo $PAYARA/bin/asadmin stop-domain
 
 echo "Enviando Arquivo"
 sudo $PAYARA/bin/asadmin start-domain
+waitDataverse
 curl http://localhost:8080/api/admin/datasetfield/loadpropertyfiles -X POST --upload-file $LANGUAGE_ZIP -H "Content-Type: application/zip"
 sudo $PAYARA/bin/asadmin stop-domain
 
 echo "Definindo os idiomas ativos"
 sudo $PAYARA/bin/asadmin start-domain
+waitDataverse
 echo "===>Definindo os idiomas do Dataverse e suas extensões"
 curl http://localhost:8080/api/admin/settings/:Languages -X PUT -d '[{"locale":"en","title":"Idioma Padrão"},  {"locale":"us","title":"English"}, {"locale":"br","title":"Português"}, {"locale":"es","title":"Espanhol"}]'
 sudo $PAYARA/bin/asadmin stop-domain
 
 echo "Reinicializando"
 sudo $PAYARA/bin/asadmin start-domain
+waitDataverse
+
+#Shibboleth
+sudo apt -y install shibboleth-sp-utils
+
 
 
 #definir cabeçalho do e-mail
